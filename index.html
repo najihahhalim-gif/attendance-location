@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attendance Location Verification</title>
+  <style>
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      padding: 30px; 
+      background: #f4f6f8; 
+    }
+    .card { 
+      background: white; 
+      border-radius: 12px; 
+      padding: 25px; 
+      max-width: 360px; 
+      margin: auto; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1); 
+    }
+    h2 {
+      margin-top: 0;
+      color: #333;
+    }
+    button { 
+      background: #0F9D58; 
+      color: white; 
+      border: none; 
+      padding: 14px 20px; 
+      border-radius: 6px; 
+      font-size: 16px; 
+      width: 100%; 
+      margin-top: 15px; 
+      cursor: pointer; 
+      font-weight: bold;
+    }
+    button:disabled { 
+      background: #ccc; 
+      cursor: not-allowed;
+    }
+    #status { 
+      margin-top: 15px; 
+      font-weight: bold; 
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>📍 Location Check</h2>
+    <p>Confirm your location to complete your clock entry.</p>
+    <button id="btn" onclick="sendLocation()">Confirm Location</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const user = urlParams.get('user');
+    const action = urlParams.get('action') || 'CLOCK_IN';
+    
+    // YOUR LIVE MAKE WEBHOOK URL
+    const MAKE_WEBHOOK_URL = "https://hook.us1.make.com/1ncgces0mxx6hej9zb35i9jkfoggz4j6";
+
+    function sendLocation() {
+      const btn = document.getElementById("btn");
+      const status = document.getElementById("status");
+      btn.disabled = true;
+      status.innerText = "Acquiring GPS location...";
+
+      if (!navigator.geolocation) {
+        status.innerText = "Geolocation is not supported on this browser.";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          status.innerText = "Submitting coordinates...";
+          fetch(MAKE_WEBHOOK_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              user: user,
+              action: action,
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              accuracy: pos.coords.accuracy,
+              timestamp: new Date().toISOString()
+            })
+          })
+          .then(() => {
+            status.innerText = "✅ Location confirmed! You can return to Google Chat.";
+            status.style.color = "green";
+          })
+          .catch(() => {
+            status.innerText = "❌ Submission failed. Try again.";
+            status.style.color = "red";
+            btn.disabled = false;
+          });
+        },
+        (err) => {
+          status.innerText = "❌ Location permission denied or timed out.";
+          status.style.color = "red";
+          btn.disabled = false;
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      );
+    }
+  </script>
+</body>
+</html>
